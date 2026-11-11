@@ -4,36 +4,55 @@ A static, phone-first QR reader for the E1 watch export. No server, Google accou
 integration, build step, analytics, or remote scanner scripts. Raw QR bytes are
 assembled and saved without text normalization, rounding, or record filtering.
 
-## Publish a new repository
+## Published site and updates
 
-1. Create a new **public** GitHub repository, for example `ema-watch-reader`, in the
-   lab's or maintainer's GitHub account. Public repositories support GitHub Pages
-   on GitHub Free. Do not upload the entire Fitbit project: it includes companion
-   credentials and other files that do not belong on a public website.
-2. Upload these files from this folder into the repository root:
-   - `index.html`, `style.css`, `reader.mjs`, `protocol.mjs`, `.nojekyll`
-   - `vendor/` (both the decoder and its license)
-   - `README.md`, `PROTOCOL.md`, `THIRD_PARTY.md`
-   The prepared `tools/phone-reader-github.zip` contains exactly these files.
-   Extract it first; upload its contents, not the zip itself. Preserve `vendor/`.
-3. Commit the files to `main`. Under **Settings → Pages**, choose **Deploy from a
-   branch**, select **main** and **/(root)**, and save. Enable **Enforce HTTPS** if
-   the option is offered. Wait for GitHub to display the published URL.
-4. Open `https://YOUR-ACCOUNT.github.io/ema-watch-reader/` in Safari on the iPhone.
-   Use the actual URL shown by GitHub. Test before distributing it to researchers.
-5. Put that link in the study instructions. Researchers need no GitHub account.
-   Later updates use the same URL; refresh before starting a new scanning session.
+- Repository: https://github.com/jzchinn/EMA_QR_Scanner
+- Researcher URL: https://jzchinn.github.io/EMA_QR_Scanner/
+- Pages configuration: **Deploy from a branch → main → /(root)**.
+- Local reader version: **v1.2**. Wire protocol: **E1**.
 
-Official instructions: https://docs.github.com/en/pages/quickstart
-No repository has been created or published by preparing these files.
+On 2026-11-11, the live index.html, style.css, reader.mjs, and protocol.mjs matched
+local v1.1 source byte-for-byte. This is deployment verification, not device testing.
+Researchers open the HTTPS URL in Safari and need no GitHub account.
+
+Canonical local source is `tools/phone-reader/` inside the watch workspace. Upload
+its contents to the repository root, preserving `vendor/`:
+
+- `index.html`, `style.css`, `reader.mjs`, `protocol.mjs`
+- `vendor/` (decoder and license)
+- `README.md`, `PROTOCOL.md`, `THIRD_PARTY.md`, `.nojekyll`
+
+Do not upload the whole watch project, companion credentials, participant data,
+the enclosing folder, or a ZIP. The optional `tools/phone-reader-github.zip`
+contains only the ten hosting files above, excluding tests. Extract it if using
+the ZIP workflow; uploading directly from canonical source needs no extraction.
+Existing extracted `phone-reader-github` folders can be stale. ZIP extraction may
+preserve source timestamps, so modification time alone does not identify a version.
+
+For updates, upload replacements at the same paths and **Commit changes** to
+`main`. Replacing all hosting files is fine; Git compares file contents. Commits
+trigger deployment automatically: there is no separate republish step. Check the
+repository's **Actions** tab for the Pages deployment, then reload Safari before
+starting a new export. If the old UI persists, close/reopen the tab after deployment.
+
+The browser uploader may reject hidden files even after Finder shows them. Leave
+an existing `.nojekyll` alone. If absent, use **Add file → Create new file**, name it
+`.nojekyll`, add a harmless line if needed, and commit. Do not repeatedly drag hidden
+files into an empty upload form.
+
+For a replacement repository, upload the same root contents, then select the Pages
+configuration above under **Settings → Pages**. Use the URL GitHub supplies and
+HTTPS. [Official GitHub Pages instructions](https://docs.github.com/en/pages/quickstart).
 
 ## Watch prerequisite
 
 The old `1/3` test QR codes cannot provide whole-file integrity verification. This
 reader deliberately rejects them rather than calling an unverified file verified.
-Build and sideload the updated watch project, which adds `app/export-format.js`
-and changes only export preparation/page framing in `app/transfer.js`.
-QR rendering remains version 17, 3 pixels/module. Survey collection is unchanged.
+Build and install the current watch project, including `app/export-format.js`
+and the current `app/transfer.js`. The visible watch label such as `SAMPLE 1/3`
+is not the encoded header and cannot identify an old build. QR rendering remains
+version 17, 3 pixels/module. Reader v1.1 also accompanies watch navigation changes;
+updating the website alone cannot change watch behavior.
 
 Each page holds up to 548 original file bytes. A 23,000-byte file needs 42 pages;
 there is no compression yet. The existing 1,603-byte sample needs three pages.
@@ -42,9 +61,10 @@ there is no compression yet. The existing 1,603-byte sample needs three pages.
 
 1. Open Data transfer on the watch and this reader in Safari. Tap Start scanning
    and allow camera access. Scan with the webpage, not the iPhone Camera search link.
-2. Keep the whole QR in view, hold steady, and advance the watch when the count
-   increases. Order does not matter. Identical duplicate scans are ignored.
-3. A green message over the camera confirms each captured page; identical duplicates
+2. Fit the whole QR and its white border inside the framing box and hold steady.
+   The reader tries this area at camera resolution, then falls back to the full
+   frame. Advance the watch when the count increases. Order does not matter.
+3. A green message below the camera confirms each captured page. Identical duplicates
    do not increase the count or flash the border again. If needed, choose **Scan a photo instead**; the page immediately reports whether
    the selected photo decoded. An unreadable photo is not a captured page.
 4. After every page arrives, the reader checks the file's byte length and CRC-32.
@@ -60,7 +80,7 @@ there is no compression yet. The existing 1,603-byte sample needs three pages.
 7. Press and release the watch's side button to return from Data transfer to the
    main menu. It cancels pending transfer work; it does not delete survey data.
    Exiting during synchronous encoding may wait until that encoding call returns.
-   Setup and data clearing remain separate unfinished features in this watch build.
+   Setup → PID is built; Wake/Sleep and data clearing remain unfinished features.
    Use **Start new export** on the phone before scanning another export.
 
 Keep the tab open until saving. Scans are held in memory only. Reload, tab eviction,

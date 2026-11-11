@@ -4,6 +4,10 @@ This implemented E1 framing supersedes the earlier compact/Base32 proposal for t
 version. No compact-format implementation was released. Future incompatible framing
 must use a new version prefix.
 
+Reader UI release v1.1 does not change this E1 wire format. The visible watch
+status label is separate from the encoded header. A rejected header alone does
+not establish an old watch build; an invalid camera decode can also cause it.
+
 QR mode: byte. Version 17, correction L, mask 2. Maximum QR payload: 644 bytes.
 Every QR holds an ASCII header terminated by LF, followed immediately by file bytes:
 

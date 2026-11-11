@@ -1,4 +1,4 @@
-import { ExportSession, summarize } from './protocol.mjs';
+import { ExportSession, parsePage, summarize } from './protocol.mjs';
 const el = id => document.getElementById(id);
 let session = new ExportSession();
 let stream = null, timer = null, cameraGeneration = 0, sessionGeneration = 0;
@@ -7,6 +7,8 @@ let captureTimer = null, lastCaptureAt = 0, unreadableFrames = 0;
 let downloadOnly = false, saving = false, hasSaveRequest = false;
 const canvas = el('canvas');
 const context = canvas.getContext('2d', { willReadFrequently: true });
+const scanGuide = el('scanGuide');
+const LIVE_MAX_SIDE = 1280;
 
 function error(message) { el('error').textContent = message; el('error').hidden = !message; }
 function stopCamera() {
@@ -15,6 +17,7 @@ function stopCamera() {
   if (stream) stream.getTracks().forEach(track => track.stop());
   stream = null;
   el('video').srcObject = null;
+  if (scanGuide) scanGuide.hidden = true;
   el('cameraHint').hidden = false;
   el('pause').disabled = true;
   el('start').disabled = Boolean(session.verified || session.failed);
@@ -72,19 +75,39 @@ function accept(code, fromPhoto = false) {
     } else { error(e.message); update(); }
   }
 }
-function decode(source, width, height, maxSide) {
+function decode(source, width, height, maxSide, x = 0, y = 0) {
   const scale = Math.min(1, maxSide / Math.max(width, height));
   canvas.width = Math.round(width * scale); canvas.height = Math.round(height * scale);
-  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  context.drawImage(source, x, y, width, height, 0, 0, canvas.width, canvas.height);
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
   return window.jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'dontInvert' });
+}
+function decodeVideo(video) {
+  const { videoWidth: width, videoHeight: height } = video;
+  if (!scanGuide) return decode(video, width, height, LIVE_MAX_SIDE);
+  const side = Math.max(1, Math.min(LIVE_MAX_SIDE, Math.floor(Math.min(width, height) * 0.8)));
+  const x = Math.floor((width - side) / 2);
+  const y = Math.floor((height - side) / 2);
+  // The square preview contains the video, so its width represents the frame's long side.
+  scanGuide.style.width = `${100 * side / Math.max(width, height)}%`;
+  scanGuide.hidden = false;
+  const centered = decode(video, side, side, side, x, y);
+  if (centered) {
+    try {
+      parsePage(centered.binaryData);
+      return centered;
+    } catch (e) {
+      if (e.code !== 'unreadable') throw e;
+    }
+  }
+  return decode(video, width, height, LIVE_MAX_SIDE) || centered;
 }
 function scan(generation) {
   if (generation !== cameraGeneration || !stream) return;
   try {
     const video = el('video');
-    if (video.readyState >= 2 && video.videoWidth) {
-      const code = decode(video, video.videoWidth, video.videoHeight, 1280);
+    if (video.readyState >= 2 && video.videoWidth && video.videoHeight) {
+      const code = decodeVideo(video);
       if (code) accept(code);
       else unreadableFrames = 0;
     }
