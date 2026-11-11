@@ -3,6 +3,8 @@ const el = id => document.getElementById(id);
 let session = new ExportSession();
 let stream = null, timer = null, cameraGeneration = 0, sessionGeneration = 0;
 let downloadingUrl = null;
+let captureTimer = null, lastCaptureAt = 0, unreadableFrames = 0;
+let downloadOnly = false, saving = false, hasSaveRequest = false;
 const canvas = el('canvas');
 const context = canvas.getContext('2d', { willReadFrequently: true });
 
@@ -18,42 +20,57 @@ function stopCamera() {
   el('start').disabled = Boolean(session.verified || session.failed);
   el('start').textContent = session.pages.size ? 'Resume scanning' : 'Start scanning';
 }
+function feedback(message, kind = '') {
+  const banner = el('scanFeedback');
+  if (banner.textContent !== message) banner.textContent = message;
+  banner.className = 'scan-feedback' + (kind ? ' ' + kind : '');
+}
+function captured(page, duplicate) {
+  if (!duplicate) {
+    lastCaptureAt = Date.now();
+    clearTimeout(captureTimer);
+    el('camera').classList.add('captured');
+    captureTimer = setTimeout(() => el('camera').classList.remove('captured'), 1400);
+  }
+  feedback(session.verified ? '✓ All pages captured' : `✓ Page ${page} captured — advance the watch`, 'success');
+}
 function update() {
   const m = session.meta;
   el('progress').max = m ? m.total : 1;
   el('progress').value = session.pages.size;
   const missing = session.missing();
-  el('missing').textContent = m ? (missing.length ? `Missing pages: ${missing.slice(0, 80).join(', ')}${missing.length > 80 ? ' …' : ''}` : `All ${m.total} pages received.`) : 'No export started.';
+  el('missing').textContent = m && missing.length ? `Missing pages: ${missing.slice(0, 80).join(', ')}${missing.length > 80 ? ' …' : ''}` : '';
   const verified = Boolean(session.verified && !session.failed);
-  el('share').disabled = !verified;
-  el('download').disabled = !verified;
-  el('result').hidden = !verified;
+  el('save').disabled = !verified || saving;
   el('photo').disabled = verified || session.failed;
+  el('reviewWarning').hidden = !verified || !summarize(session.verified).needsReview;
   if (session.failed) {
-    el('confirmed').checked = false;
-    el('confirmed').disabled = true;
-    el('status').textContent = 'Verification failed';
-    el('saveStatus').textContent = 'Saving is blocked. Keep the watch data and start a new export.';
+    el('status').textContent = 'Verification failed — start a new export and rescan.';
+    el('saveStatus').textContent = 'Keep the watch data. Saving is blocked until verification succeeds.';
+    feedback('Verification failed — rescan this export', 'guidance');
     stopCamera();
   } else if (verified) {
     stopCamera();
-    el('status').textContent = m.kind === 'S' ? 'Sample export verified' : 'Export verified';
-    const report = summarize(session.verified);
-    el('summary').textContent = `${report.records} structurally valid survey records · ${m.size.toLocaleString()} bytes · checksum ${m.crc}. Export ${m.id}.`;
-    el('warnings').replaceChildren();
-    const warnings = m.kind === 'S' ? ['SAMPLE DATA — not participant data.', ...report.warnings] : report.warnings;
-    for (const warning of warnings) {
-      const item = document.createElement('li'); item.textContent = warning; el('warnings').append(item);
-    }
-    el('saveStatus').textContent = 'Choose Save / share file, then Save to Files. Download file is an alternative.';
-  } else el('status').textContent = m ? `${session.pages.size} of ${m.total} pages received` : 'Ready for the first page.';
+    el('status').textContent = m.kind === 'S' ? 'Sample file received and verified — not participant data.' : 'Complete file received and verified.';
+    el('saveStatus').textContent = 'Ready to save.';
+  } else el('status').textContent = m ? `${session.pages.size} of ${m.total} pages received` : 'Waiting for pages.';
 }
-function accept(code) {
+function accept(code, fromPhoto = false) {
   try {
     const outcome = session.add(code.binaryData);
+    unreadableFrames = 0;
     error('');
     if (!outcome.duplicate) update();
-  } catch (e) { error(e.message); update(); }
+    captured(outcome.page, outcome.duplicate);
+  } catch (e) {
+    if (e.code === 'unreadable') {
+      unreadableFrames++;
+      // A bad frame must not immediately replace a successful capture cue.
+      if (fromPhoto || (unreadableFrames >= 3 && Date.now() - lastCaptureAt >= 1800)) {
+        feedback('Couldn’t read this page. Move slightly farther away, keep the whole code visible, and hold steady.', 'guidance');
+      }
+    } else { error(e.message); update(); }
+  }
 }
 function decode(source, width, height, maxSide) {
   const scale = Math.min(1, maxSide / Math.max(width, height));
@@ -69,6 +86,7 @@ function scan(generation) {
     if (video.readyState >= 2 && video.videoWidth) {
       const code = decode(video, video.videoWidth, video.videoHeight, 1280);
       if (code) accept(code);
+      else unreadableFrames = 0;
     }
   } catch (e) { error(`Camera decoding stopped: ${e.message}. Try a photo or resume scanning.`); stopCamera(); }
   if (generation === cameraGeneration && stream) timer = setTimeout(() => scan(generation), 250);
@@ -116,7 +134,7 @@ el('photo').addEventListener('change', async event => {
     if (generation !== sessionGeneration) return;
     const code = decode(img, img.naturalWidth, img.naturalHeight, 2000);
     if (!code) throw new Error('No readable QR found. Retake the photo with the code larger, sharp, and free of glare.');
-    accept(code);
+    accept(code, true);
   } catch (e) { if (generation === sessionGeneration) error(e.message); }
   finally { URL.revokeObjectURL(url); event.target.value = ''; }
 });
@@ -127,8 +145,8 @@ function makeFile() {
   return new File([session.verified], `${prefix}${label ? '-' + label : ''}-${session.meta.id}.txt`, { type: 'text/plain' });
 }
 function saveRequested() {
-  el('confirmed').disabled = false;
-  el('saveStatus').textContent = 'Save requested, not yet confirmed. Open the file in Files and check it before clearing the watch.';
+  hasSaveRequest = true;
+  el('saveStatus').textContent = 'Open the saved file in Files before clearing the watch.';
 }
 function download() {
   const file = makeFile();
@@ -138,34 +156,45 @@ function download() {
   document.body.append(link); link.click(); link.remove();
   saveRequested();
 }
-el('download').addEventListener('click', () => { try { download(); } catch (e) { error(e.message); } });
-el('share').addEventListener('click', async () => {
+el('save').addEventListener('click', async () => {
   const generation = sessionGeneration;
+  if (saving) return;
+  saving = true;
+  el('save').disabled = true;
+  error('');
   try {
     const file = makeFile();
-    if (navigator.canShare?.({ files: [file] })) {
+    if (!downloadOnly && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: 'Watch export' });
       if (generation === sessionGeneration) saveRequested();
     } else download();
   } catch (e) {
     if (generation !== sessionGeneration) return;
-    if (e.name === 'AbortError') el('saveStatus').textContent = 'Sharing cancelled. The verified export is still available to save.';
-    else error(`Could not share: ${e.message}. Try Download file.`);
+    if (e.name === 'AbortError') el('saveStatus').textContent = 'Save cancelled. Tap Save file to try again.';
+    else {
+      downloadOnly = true;
+      el('saveStatus').textContent = 'Could not open save options. Tap Save file again to download.';
+    }
+  } finally {
+    if (generation === sessionGeneration) {
+      saving = false;
+      el('save').disabled = !session.verified || session.failed;
+    }
   }
-});
-el('confirmed').addEventListener('change', () => {
-  el('saveStatus').textContent = el('confirmed').checked ? 'You confirmed the saved file is accessible. Upload it to the study Drive folder.' : 'File saving has not been confirmed.';
 });
 el('reset').addEventListener('click', () => {
   if (session.pages.size && !confirm('Discard this scanning session and start a new export? Save the current file first if needed. This does not clear the watch.')) return;
   stopCamera(); sessionGeneration++; session = new ExportSession();
   if (downloadingUrl) URL.revokeObjectURL(downloadingUrl);
   downloadingUrl = null;
-  el('label').value = ''; el('confirmed').checked = false; el('confirmed').disabled = true;
+  el('label').value = '';
+  saving = false; downloadOnly = false; hasSaveRequest = false;
+  unreadableFrames = 0; lastCaptureAt = 0; clearTimeout(captureTimer);
+  el('camera').classList.remove('captured'); feedback('Ready to scan');
   el('saveStatus').textContent = 'Saving becomes available after verification.';
   el('start').disabled = false; el('start').textContent = 'Start scanning'; error(''); update();
 });
 window.addEventListener('beforeunload', event => {
-  if (session.pages.size && !el('confirmed').checked) { event.preventDefault(); event.returnValue = ''; }
+  if (session.pages.size && !hasSaveRequest) { event.preventDefault(); event.returnValue = ''; }
 });
 update();

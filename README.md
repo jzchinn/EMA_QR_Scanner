@@ -44,19 +44,24 @@ there is no compression yet. The existing 1,603-byte sample needs three pages.
    and allow camera access. Scan with the webpage, not the iPhone Camera search link.
 2. Keep the whole QR in view, hold steady, and advance the watch when the count
    increases. Order does not matter. Identical duplicate scans are ignored.
-3. If needed, choose **Scan a photo instead**; the page immediately reports whether
+3. A green message over the camera confirms each captured page; identical duplicates
+   do not increase the count or flash the border again. If needed, choose **Scan a photo instead**; the page immediately reports whether
    the selected photo decoded. An unreadable photo is not a captured page.
 4. After every page arrives, the reader checks the file's byte length and CRC-32.
    Sample exports are clearly labeled. Unexpected record formats produce warnings
    but all original bytes remain in the saved file.
-5. Optionally enter a study ID as the file label. Choose **Save / share file** and
-   **Save to Files**, or use **Download file**. Exact iOS destinations depend on the
-   device. Downloads may go to iCloud Drive or On My iPhone according to settings.
-6. Open the resulting `.txt` in Files and confirm it is accessible. Return to the
-   reader and check the confirmation box. A share/download request alone is not
-   evidence that the researcher completed saving. Upload to the study Drive folder.
-7. Only then follow the study's data-clearing procedure. This reader never clears
-   the watch. Use Start new export for the next watch.
+5. Optionally enter a study ID as the file label. Tap **Save file** and choose
+   **Save to Files**. Where file sharing is unavailable, the same button downloads.
+   A non-cancellation sharing error makes the next tap use the download fallback.
+   Downloads may go to iCloud Drive or On My iPhone according to device settings.
+6. Open the resulting `.txt` in Files and confirm it is accessible, then manually
+   upload it to the study Drive folder. The reader does not claim a save succeeded
+   merely because the save options opened. There is no confirmation checkbox.
+7. Press and release the watch's side button to return from Data transfer to the
+   main menu. It cancels pending transfer work; it does not delete survey data.
+   Exiting during synchronous encoding may wait until that encoding call returns.
+   Setup and data clearing remain separate unfinished features in this watch build.
+   Use **Start new export** on the phone before scanning another export.
 
 Keep the tab open until saving. Scans are held in memory only. Reload, tab eviction,
 closing the page, or restarting Safari can lose them; rescan with the watch present.
@@ -100,3 +105,32 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory tools/phone-reader
 
 Open http://127.0.0.1:8765 on that computer. A local file double-click is not sufficient
 for browser modules/camera access. Use the published HTTPS page on the phone.
+
+## Reader v1.1 / watch navigation update
+
+The watch hides the previous QR immediately on accepted page navigation and displays
+Generating / Please wait until the new image is ready. The side-button release is
+handled before the survey keyup handler; default button behavior remains prevented.
+Transfer exit cancels the pending timeout, closes an open image descriptor, releases
+encoder references, hides the transfer screen, and restores prior display settings.
+Re-entry resets image bookkeeping and creates fresh export metadata. Survey handlers
+are unchanged apart from the transfer-only early return.
+
+Unreadable-header errors now offer distance/framing guidance near the camera rather
+than asserting the watch has an old build. Live guidance requires three consecutive
+invalid decoded frames and waits 1.8 seconds after a successful capture. A single
+unreadable photo gives guidance immediately. A failed decode is not evidence of an
+old build; blur, cropping, or a false decode are possible but unconfirmed causes.
+Mixed-export and whole-file verification failures remain distinct actionable errors.
+
+Step 2 retains completeness/integrity checks but hides technical metadata. Sample
+files remain identified, and meaningful record-format warnings remain visible.
+The long footer and save checkbox were removed. Protocol E1 and the saved bytes
+are unchanged; use the revised watch build for hiding and side-button navigation.
+
+Validation: all ten desktop protocol checks pass. In a 390×844 browser viewport,
+synthetic photo scans confirmed the visible capture banner, duplicate handling,
+final completion state, single Save button, and cancellation message. Native iPhone
+saving and watch cancellation still require physical-device checks. Watch exit was
+hand-traced during the initial delay, checksum reads, between image batches, after
+image display, and across re-entry; no Fitbit build or device simulation was run.

@@ -1,8 +1,8 @@
 :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #19312d; background: #f2f5f2; line-height: 1.5; }
 * { box-sizing: border-box; }
 body { margin: 0; }
-main { width: min(100% - 32px, 640px); margin: 32px auto 48px; }
-header { margin: 0 4px 28px; }
+main { width: min(100% - 32px, 640px); margin: 16px auto 32px; }
+header { margin: 0 4px 16px; }
 h1 { font-size: clamp(28px, 6vw, 38px); letter-spacing: -.04em; margin: 5px 0; }
 h2 { font-size: 19px; margin: 0; }
 p { margin: 12px 0; }
@@ -18,18 +18,22 @@ button { font: inherit; font-weight: 600; background: #225c49; color: white; bor
 button.secondary { color: #225c49; background: white; border-color: #bccfc4; }
 button:disabled { opacity: .42; cursor: default; }
 button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid #d79c31; outline-offset: 3px; }
-.small, footer { font-size: 13px; color: #52645c; }
-footer { margin: 24px 4px; }
+.small { font-size: 13px; color: #52645c; }
 #status { font-weight: 650; font-size: 20px; }
 progress { width: 100%; height: 12px; accent-color: #225c49; }
 #error { padding: 12px; background: #fff0ed; border-left: 3px solid #a63c2b; color: #822c21; }
-#missing, #summary { overflow-wrap: anywhere; }
+#missing { overflow-wrap: anywhere; }
 input[type=text] { display: block; width: 100%; padding: 12px; font: inherit; border: 1px solid #bdcbc3; border-radius: 8px; margin-top: 8px; }
-input[type=checkbox] { width: 20px; height: 20px; flex: 0 0 20px; accent-color: #225c49; }
-.confirmation { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; }
 summary { cursor: pointer; padding: 8px 0; }
 input[type=file] { display: block; max-width: 100%; margin-top: 10px; }
 ul { padding-left: 22px; }
 .reset { width: 100%; }
 [hidden] { display: none !important; }
 @media (max-width: 390px) { section { padding: 16px; } .buttons button { flex: 1 1 auto; } }
+
+.scan-feedback { position: absolute; bottom: 10px; left: 10px; right: 10px; margin: 0; padding: 12px; border-radius: 8px; color: white; background: #19312de8; font-size: 16px; font-weight: 650; text-align: center; }
+.scan-feedback.success { background: #d8f7df; color: #16492b; }
+.scan-feedback.guidance { background: #fff0c7; color: #634b10; }
+.camera.captured { box-shadow: 0 0 0 5px #3caa68; }
+#reviewWarning { color: #634b10; background: #fff0c7; border-radius: 8px; padding: 12px; }
+#save { width: 100%; }

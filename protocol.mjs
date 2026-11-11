@@ -9,20 +9,25 @@ export function checksum(bytes) {
   }
   return ((crc ^ -1) >>> 0).toString(16).padStart(8, '0');
 }
+function unreadablePage() {
+  const error = new Error('Could not read this page. Move the phone slightly farther away, keep the whole code visible, and hold steady.');
+  error.code = 'unreadable';
+  return error;
+}
 export function parsePage(input) {
   const bytes = Uint8Array.from(input);
-  if (bytes.length > 644) throw new Error('QR payload exceeds the E1 size limit.');
+  if (bytes.length > 644) throw unreadablePage();
   const end = bytes.indexOf(10);
-  if (end < 0 || end > 95) throw new Error('Not an E1 export page. Install the updated watch build.');
+  if (end < 0 || end > 95) throw unreadablePage();
   const header = String.fromCharCode(...bytes.subarray(0, end));
   const match = /^E1\|([0-9a-f]{1,16}-[0-9a-f]{1,8})\|([1-9][0-9]{0,3})\|([1-9][0-9]{0,3})\|([1-9][0-9]{0,6})\|([0-9a-f]{8})\|([SD])$/.exec(header);
-  if (!match) throw new Error('Unrecognized page header. Use this reader with the updated E1 watch export.');
+  if (!match) throw unreadablePage();
   const [, id, p, t, s, crc, kind] = match;
   const page = Number(p), total = Number(t), size = Number(s);
-  if (size > MAX_BYTES || total !== Math.ceil(size / PAGE_BYTES) || page > total) throw new Error('Invalid export size or page count.');
+  if (size > MAX_BYTES || total !== Math.ceil(size / PAGE_BYTES) || page > total) throw unreadablePage();
   const payload = bytes.slice(end + 1);
   const expected = Math.min(PAGE_BYTES, size - (page - 1) * PAGE_BYTES);
-  if (payload.length !== expected) throw new Error('Page length mismatch. Rescan this page.');
+  if (payload.length !== expected) throw unreadablePage();
   return { id, page, total, size, crc, kind, payload };
 }
 export class ExportSession {
@@ -65,7 +70,7 @@ export class ExportSession {
 export function summarize(bytes) {
   let text;
   try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
-  catch { return { records: 0, warnings: ['File is not valid UTF-8. Original bytes are preserved.'] }; }
+  catch { return { records: 0, warnings: ['File is not valid UTF-8. Original bytes are preserved.'], needsReview: true }; }
   const warnings = [];
   let records = 0, malformed = 0, other = 0;
   const record = /^\*Q2:(-?[0-3]|9),Q3:(-?[0-3]|9),EMO:((?:\d+,){8}\d+),MS:((?:-?\d+,){9}-?\d+),TIME:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z&$/;
@@ -81,5 +86,5 @@ export function summarize(bytes) {
   if (malformed) warnings.push(`${malformed} survey-like line(s) have an unexpected format.`);
   if (other) warnings.push(`${other} other line(s), such as setup or POSTED markers, retained.`);
   if (bytes.length && bytes[bytes.length - 1] !== 10) warnings.push('No final newline: inspect the last record for truncation.');
-  return { records, warnings };
+  return { records, warnings, needsReview: malformed > 0 || (bytes.length > 0 && bytes[bytes.length - 1] !== 10) };
 }
