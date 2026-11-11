@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self' blob: data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Watch data reader</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="vendor/jsQR.js"></script>
+  <script type="module" src="reader.mjs"></script>
+</head>
+<body>
+<main>
+  <header><p class="eyebrow">EMA · RESEARCH TOOLS</p><h1>Watch data reader</h1><p>Scan every page. Verify the export. Save the file.</p></header>
+  <section aria-labelledby="scan-title">
+    <div class="section-heading"><h2 id="scan-title">1. Scan the watch</h2><span class="badge">E1 · v1.0</span></div>
+    <p>Open <strong>Data transfer</strong> on the watch. Scan pages in any order, using this camera view.</p>
+    <div class="camera"><video id="video" autoplay muted playsinline aria-label="Camera preview"></video><p id="cameraHint">Camera is off</p></div>
+    <canvas id="canvas" hidden></canvas>
+    <div class="buttons"><button id="start">Start scanning</button><button id="pause" class="secondary" disabled>Pause camera</button></div>
+    <p class="small">Keep the entire code visible, hold steady, and avoid glare. If needed, move the phone farther away.</p>
+    <details><summary>Scan a photo instead</summary><p>Decode a watch photo on this phone and immediately check whether its page was received.</p><label class="file-label">Choose a photo <input id="photo" type="file" accept="image/*"></label></details>
+  </section>
+  <section aria-labelledby="verify-title">
+    <h2 id="verify-title">2. Check completeness</h2>
+    <p id="status" role="status" aria-live="polite">Ready for the first page.</p>
+    <progress id="progress" max="1" value="0" aria-label="Pages received"></progress>
+    <p id="missing" class="small">No export started.</p>
+    <p id="error" role="alert" hidden></p>
+    <div id="result" hidden><p id="summary"></p><ul id="warnings"></ul><p class="small">Verified means the bytes match the watch export. It does not establish that every expected survey was collected.</p></div>
+  </section>
+  <section aria-labelledby="save-title">
+    <h2 id="save-title">3. Save and confirm</h2>
+    <label for="label">File label (optional study ID; avoid names)</label><input id="label" type="text" maxlength="40" placeholder="e.g. P0123" autocomplete="off">
+    <div class="buttons"><button id="share" disabled>Save / share file</button><button id="download" class="secondary" disabled>Download file</button></div>
+    <p id="saveStatus" class="small">Saving becomes available after verification.</p>
+    <label class="confirmation"><input id="confirmed" type="checkbox" disabled> I opened the saved file in Files and confirmed it is accessible.</label>
+    <p>Keep the watch data until the saved file is confirmed. Upload the file to the study’s Google Drive folder afterward.</p>
+  </section>
+  <button id="reset" class="secondary reset">Start new export</button>
+  <footer>Scanning and verification happen on this phone. This reader does not upload images or records. Keep this tab open until you save; refreshing or closing it loses unsaved scans. Internet is needed to load the page. No offline availability is promised.</footer>
+  <noscript>This reader requires JavaScript to scan and verify exports.</noscript>
+</main>
+</body>
+</html>
