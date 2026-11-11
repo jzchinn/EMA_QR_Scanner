@@ -1,4 +1,5 @@
-import { ExportSession, parsePage, summarize } from './protocol.mjs';
+import { ExportSession, parsePage, summarize, savedFile, fileName } from './protocol.mjs';
+const READER_VERSION = 'reader v1.3';
 const el = id => document.getElementById(id);
 let session = new ExportSession();
 let stream = null, timer = null, cameraGeneration = 0, sessionGeneration = 0;
@@ -46,7 +47,10 @@ function update() {
   const verified = Boolean(session.verified && !session.failed);
   el('save').disabled = !verified || saving;
   el('photo').disabled = verified || session.failed;
-  el('reviewWarning').hidden = !verified || !summarize(session.verified).needsReview;
+  const report = verified ? summarize(session.verified) : null;
+  el('reviewWarning').hidden = !verified || !report.needsReview;
+  el('summary').hidden = !verified;
+  el('summary').textContent = verified ? summaryText(report.decoded) : '';
   if (session.failed) {
     el('status').textContent = 'Verification failed — start a new export and rescan.';
     el('saveStatus').textContent = 'Keep the watch data. Saving is blocked until verification succeeds.';
@@ -54,9 +58,18 @@ function update() {
     stopCamera();
   } else if (verified) {
     stopCamera();
-    el('status').textContent = m.kind === 'S' ? 'Sample file received and verified — not participant data.' : 'Complete file received and verified.';
-    el('saveStatus').textContent = 'Ready to save.';
+    const how = m.protocol === 'E2' ? 'compressed (E2)' : 'uncompressed (E1)';
+    el('status').textContent = m.kind === 'S' ? `Sample file received and verified, ${how} — not participant data.` : `Complete file received and verified, ${how}.`;
+    el('saveStatus').textContent = `Ready to save as ${fileName(m, report.decoded, new Date())}`;
   } else el('status').textContent = m ? `${session.pages.size} of ${m.total} pages received` : 'Waiting for pages.';
+}
+function summaryText(d) {
+  if (!d) return 'The file is not readable text; it will still be saved exactly as received.';
+  const abandoned = d.rows.filter(r => r.abandoned).length;
+  const parts = [d.pid ? `PID ${d.pid}` : 'No PID in file', `${d.rows.length} survey(s)${abandoned ? ` (${abandoned} abandoned)` : ''}`];
+  if (d.rows.length) parts.push(`${d.rows[0].time.slice(0, 16)} to ${d.rows[d.rows.length - 1].time.slice(0, 16)}`);
+  if (d.pids.length > 1) parts.push(`PID changed: ${d.pids.join(' → ')}`);
+  return parts.join(' · ');
 }
 function accept(code, fromPhoto = false) {
   try {
@@ -163,9 +176,9 @@ el('photo').addEventListener('change', async event => {
 });
 function makeFile() {
   if (!session.verified || session.failed) throw new Error('Complete verification before saving.');
-  const label = el('label').value.trim().replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
-  const prefix = session.meta.kind === 'S' ? 'SAMPLE' : 'counter';
-  return new File([session.verified], `${prefix}${label ? '-' + label : ''}-${session.meta.id}.txt`, { type: 'text/plain' });
+  const now = new Date();
+  const name = fileName(session.meta, summarize(session.verified).decoded, now);
+  return new File([savedFile(session.verified, session.meta, now, READER_VERSION)], name, { type: 'text/plain' });
 }
 function saveRequested() {
   hasSaveRequest = true;
@@ -210,7 +223,6 @@ el('reset').addEventListener('click', () => {
   stopCamera(); sessionGeneration++; session = new ExportSession();
   if (downloadingUrl) URL.revokeObjectURL(downloadingUrl);
   downloadingUrl = null;
-  el('label').value = '';
   saving = false; downloadOnly = false; hasSaveRequest = false;
   unreadableFrames = 0; lastCaptureAt = 0; clearTimeout(captureTimer);
   el('camera').classList.remove('captured'); feedback('Ready to scan');

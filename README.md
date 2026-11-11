@@ -1,15 +1,19 @@
 # Watch data reader — GitHub Pages
 
-A static, phone-first QR reader for the E1 watch export. No server, Google account
-integration, build step, analytics, or remote scanner scripts. Raw QR bytes are
-assembled and saved without text normalization, rounding, or record filtering.
+A static, phone-first QR reader for the E1 and E2 watch exports. No server, Google
+account integration, build step, analytics, or remote scanner scripts. The exact watch
+file is reassembled and verified (E2's three documented character swaps are reversed;
+see `PROTOCOL.md`), then saved together with a readable CSV decoded from it.
 
 ## Published site and updates
 
 - Repository: https://github.com/jzchinn/EMA_QR_Scanner
 - Researcher URL: https://jzchinn.github.io/EMA_QR_Scanner/
 - Pages configuration: **Deploy from a branch → main → /(root)**.
-- Local reader version: **v1.2**. Wire protocol: **E1**.
+- Local reader version: **v1.3**. Wire protocols: **E1** and **E2**.
+- After deployment, reload Safari and look for **E1/E2 · v1.3** beside Scan the watch.
+- Publish v1.3 **before** exporting from a watch build that offers Compressed:
+  older readers reject E2 pages as unreadable. v1.3 still reads every E1 export.
 
 On 2026-11-11, the live index.html, style.css, reader.mjs, and protocol.mjs matched
 local v1.1 source byte-for-byte. This is deployment verification, not device testing.
@@ -54,8 +58,12 @@ is not the encoded header and cannot identify an old build. QR rendering remains
 version 17, 3 pixels/module. Reader v1.1 also accompanies watch navigation changes;
 updating the website alone cannot change watch behavior.
 
-Each page holds up to 548 original file bytes. A 23,000-byte file needs 42 pages;
-there is no compression yet. The existing 1,603-byte sample needs three pages.
+The watch's Data transfer first asks **Compressed** (default) or **Uncompressed**,
+then **Go**. E1 pages hold up to 548 file bytes; E2 pages (Compressed, when the file
+allows it) hold 870. About 100 surveys in the compact record format (~6.6 KB) take
+8 E2 or 13 E1 pages. The watch label shows `E1` or `E2` on each page; Compressed
+falls back to E1 for files with old-format records. The existing 1,603-byte sample
+is always E1 and needs three pages.
 
 ## Researcher workflow
 
@@ -68,10 +76,14 @@ there is no compression yet. The existing 1,603-byte sample needs three pages.
 3. A green message below the camera confirms each captured page. Identical duplicates
    do not increase the count or flash the border again. If needed, choose **Scan a photo instead**; the page immediately reports whether
    the selected photo decoded. An unreadable photo is not a captured page.
-4. After every page arrives, the reader checks the file's byte length and CRC-32.
-   Sample exports are clearly labeled. Unexpected record formats produce warnings
-   but all original bytes remain in the saved file.
-5. Optionally enter a study ID as the file label. Tap **Save file** and choose
+4. After every page arrives, the reader checks the file's byte length and CRC-32,
+   says whether the export was compressed (E2) or uncompressed (E1), and shows a
+   summary: PID, number of surveys (abandoned), first and last survey time. Check
+   it before clearing the watch. Sample exports are clearly labeled. Unexpected
+   record formats produce warnings but all original bytes remain in the saved file.
+5. The file is named `<PID>_esm_data_<YYYYMMDD>.txt` from the last `PID:` line and
+   today's date (`NOPID_…` if the watch has no PID). It holds a short header, the
+   exact watch file, and a readable CSV (format in `PROTOCOL.md`). Tap **Save file** and choose
    **Save to Files**. Where file sharing is unavailable, the same button downloads.
    A non-cancellation sharing error makes the next tap use the download fallback.
    Downloads may go to iCloud Drive or On My iPhone according to device settings.
@@ -100,12 +112,16 @@ A public reader does not provide access to other researchers' local scanning ses
 In the original watch workspace, run:
 
 ```sh
-node --test tools/phone-reader/tests/protocol.test.mjs
+node --test tools/phone-reader/tests/*.test.mjs
 ```
 
-Tests use the actual pure watch encoder/framing helpers and bundled jsQR decoder.
-They cover 150 records, raw-byte/UTF-8 boundaries, reverse order, duplicates,
-missing/conflicting/mixed pages, CRC failures, invalid headers, limits, and warnings.
+Tests use the actual pure watch encoder/framing/record helpers and bundled jsQR decoder.
+`protocol.test.mjs` (E1) covers 150 records, raw-byte/UTF-8 boundaries, reverse order,
+duplicates, missing/conflicting/mixed pages, CRC failures, invalid headers, limits, and
+warnings. `compact.test.mjs` covers every legal and illegal record value, 100,000
+random records, the E2 character table, alphanumeric QR capacity, 100/150-record E2
+and E1 exports through jsQR, E1/E2 mixing, PID file names, the CSV, and recovering
+the exact watch file from a saved file.
 They do not simulate Fitbit filesystem APIs, device scheduling, or a real camera.
 The tests reference the parent watch source and are not included in the hosting zip.
 
