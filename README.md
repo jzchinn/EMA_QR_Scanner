@@ -63,8 +63,9 @@ there is no compression yet. The existing 1,603-byte sample needs three pages.
 1. Open Data transfer on the watch and this reader in Safari. Tap Start scanning
    and allow camera access. Scan with the webpage, not the iPhone Camera search link.
 2. Fit the whole QR and its white border inside the framing box and hold steady.
-   The reader tries this area at camera resolution, then falls back to the full
-   frame. Advance the watch when the count increases. Order does not matter.
+   The reader scans a larger area around the box at camera resolution, then
+   falls back to the full frame. Advance the watch when the count increases.
+   Order does not matter.
 3. A green message below the camera confirms each captured page. Identical duplicates
    do not increase the count or flash the border again. If needed, choose **Scan a photo instead**; the page immediately reports whether
    the selected photo decoded. An unreadable photo is not a captured page.
