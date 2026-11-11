@@ -88,8 +88,8 @@ function decodeVideo(video) {
   const side = Math.max(1, Math.min(LIVE_MAX_SIDE, Math.floor(Math.min(width, height) * 0.8)));
   const x = Math.floor((width - side) / 2);
   const y = Math.floor((height - side) / 2);
-  // The square preview contains the video, so its width represents the frame's long side.
-  scanGuide.style.width = `${100 * side / Math.max(width, height)}%`;
+  // Aim for half the crop's width so the decoder has room for hand movement.
+  scanGuide.style.width = `${50 * side / Math.max(width, height)}%`;
   scanGuide.hidden = false;
   const centered = decode(video, side, side, side, x, y);
   if (centered) {
