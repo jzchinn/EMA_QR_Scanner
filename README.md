@@ -10,6 +10,7 @@ assembled and saved without text normalization, rounding, or record filtering.
 - Researcher URL: https://jzchinn.github.io/EMA_QR_Scanner/
 - Pages configuration: **Deploy from a branch → main → /(root)**.
 - Local reader version: **v1.2**. Wire protocol: **E1**.
+- After deployment, reload Safari and look for **E1 · v1.2** beside Scan the watch.
 
 On 2026-11-11, the live index.html, style.css, reader.mjs, and protocol.mjs matched
 local v1.1 source byte-for-byte. This is deployment verification, not device testing.
