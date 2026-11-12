@@ -182,7 +182,7 @@ function makeFile() {
 }
 function saveRequested() {
   hasSaveRequest = true;
-  el('saveStatus').textContent = 'Confirm the file is in the study Drive folder before clearing the watch.';
+  el('saveStatus').textContent = 'Confirm the file is in the Google Drive folder before clearing the watch data.';
 }
 function download() {
   const file = makeFile();
