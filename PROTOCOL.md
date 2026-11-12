@@ -31,7 +31,8 @@ E1|export-id|page|total|file-size|crc32|kind\n<raw bytes>
 - `crc32`: eight lowercase hex digits. CRC-32/ISO-HDLC, reflected polynomial
   0xEDB88320, initial state 0xFFFFFFFF, final XOR 0xFFFFFFFF. Computed over the
   entire original file, excluding all headers. Check vector `123456789` → cbf43926.
-- `kind`: S for sample.txt fallback; D for counter.txt. Included on every page.
+- `kind`: S for the built-in sample (`sample100.txt` in the current watch app);
+  D for `counter.txt`. Included on every page.
 - Header including LF: at most 96 bytes. Current maximum legal header is smaller.
 - Body: exactly 548 bytes except the final page, which holds the remainder.
 
@@ -50,8 +51,9 @@ E2 EXPORT-ID PAGE TOTAL FILE-SIZE CRC32 KIND$<body>
 - Body = the file bytes with three one-for-one swaps: newline → `$`, `,` → `.`,
   `=` → `+`. Every other byte is sent as itself.
 - The watch uses E2 only if every file byte is one of `0-9 A-Z space % * - / :`,
-  newline, `,` or `=`. So a file never contains `$ . +`, and the swaps are exactly
-  reversible. Old `*Q2:` records (lowercase, `.`, `&`) and the old sample file force E1.
+  newline, `,` or `=`. An eligible source contains none of `$ . +`, so the swaps
+  are reversible. The current sample is E2-eligible. Old `*Q2:` records
+  and the legacy sample contain ineligible bytes and force E1.
 - The reader reverses the swaps, reassembles by 870-character pages, then checks
   file-size and CRC-32 exactly as for E1 (compared in lowercase).
 

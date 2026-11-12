@@ -1,5 +1,5 @@
-import { ExportSession, parsePage, summarize, savedFile, fileName } from './protocol.mjs';
-const READER_VERSION = 'reader v1.3';
+import { ExportSession, parsePage, summarize, savedFile, fileName } from './protocol.mjs?v=1.3.1';
+const READER_VERSION = 'reader v1.3.1';
 const el = id => document.getElementById(id);
 let session = new ExportSession();
 let stream = null, timer = null, cameraGeneration = 0, sessionGeneration = 0;
@@ -182,7 +182,7 @@ function makeFile() {
 }
 function saveRequested() {
   hasSaveRequest = true;
-  el('saveStatus').textContent = 'Open the saved file in Files before clearing the watch.';
+  el('saveStatus').textContent = 'Confirm the file is in the study Drive folder before clearing the watch.';
 }
 function download() {
   const file = makeFile();
@@ -201,7 +201,7 @@ el('save').addEventListener('click', async () => {
   try {
     const file = makeFile();
     if (!downloadOnly && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Watch export' });
+      await navigator.share({ files: [file] });
       if (generation === sessionGeneration) saveRequested();
     } else download();
   } catch (e) {

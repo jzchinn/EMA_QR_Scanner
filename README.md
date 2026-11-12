@@ -10,14 +10,26 @@ see `PROTOCOL.md`), then saved together with a readable CSV decoded from it.
 - Repository: https://github.com/jzchinn/EMA_QR_Scanner
 - Researcher URL: https://jzchinn.github.io/EMA_QR_Scanner/
 - Pages configuration: **Deploy from a branch → main → /(root)**.
-- Local reader version: **v1.3**. Wire protocols: **E1** and **E2**.
-- After deployment, reload Safari and look for **E1/E2 · v1.3** beside Scan the watch.
+- Local reader version: **v1.3.1** (v1.3 is live until v1.3.1 is uploaded). Wire
+  protocols: **E1** and **E2**.
+- After deployment, reload Safari and look for **E1/E2 · v1.3.1** beside Scan the watch.
 - Publish v1.3 **before** exporting from a watch build that offers Compressed:
   older readers reject E2 pages as unreadable. v1.3 still reads every E1 export.
 
-On 2026-11-11, the live index.html, style.css, reader.mjs, and protocol.mjs matched
-local v1.1 source byte-for-byte. This is deployment verification, not device testing.
-Researchers open the HTTPS URL in Safari and need no GitHub account.
+v1.3 was published on 2026-11-11; afterward the live index.html, style.css,
+reader.mjs, and protocol.mjs matched local source byte-for-byte. That is deployment
+verification; a first one-page E2 export from the watch was then scanned and saved
+with it. Researchers open the HTTPS URL in Safari and need no GitHub account.
+
+**Every release must change the URLs of changed modules.** Pages caches files for
+about 10 minutes, and a phone can combine a new `reader.mjs` with a cached old
+`protocol.mjs`; the import then fails and Start scanning silently does nothing
+(happened once with v1.3; status stays "Ready for the first page."). `index.html`
+loads `reader.mjs?v=…`; v1.3 imported `./protocol.mjs` with no version, and v1.3.1
+imports `./protocol.mjs?v=1.3.1`. When releasing, bump `?v=` in `index.html` and on
+the `protocol.mjs` import (or rename the file), and update the badge and
+`READER_VERSION` together. If a phone still shows dead buttons, clear Safari's
+website data for the site and reopen.
 
 Canonical local source is `tools/phone-reader/` inside the watch workspace. Upload
 its contents to the repository root, preserving `vendor/`:
@@ -26,9 +38,11 @@ its contents to the repository root, preserving `vendor/`:
 - `vendor/` (decoder and license)
 - `README.md`, `PROTOCOL.md`, `THIRD_PARTY.md`, `.nojekyll`
 
-Do not upload the whole watch project, companion credentials, participant data,
-the enclosing folder, or a ZIP. The optional `tools/phone-reader-github.zip`
-contains only the ten hosting files above, excluding tests. Extract it if using
+Do not upload `tests/`, `.DS_Store`, the whole watch project, companion credentials,
+participant data, the enclosing folder, or a ZIP. (A `tests/` folder of synthetic
+data was uploaded with v1.3 by mistake; it is harmless and may be deleted.) The
+optional `tools/phone-reader-github.zip` predates v1.3 and is stale; upload from
+canonical source instead. It contained only the hosting files above, excluding tests. Extract it if using
 the ZIP workflow; uploading directly from canonical source needs no extraction.
 Existing extracted `phone-reader-github` folders can be stale. ZIP extraction may
 preserve source timestamps, so modification time alone does not identify a version.
@@ -55,23 +69,28 @@ reader deliberately rejects them rather than calling an unverified file verified
 Build and install the current watch project, including `app/export-format.js`
 and the current `app/transfer.js`. The visible watch label such as `SAMPLE 1/3`
 is not the encoded header and cannot identify an old build. QR rendering remains
-version 17, 3 pixels/module. Reader v1.1 also accompanies watch navigation changes;
-updating the website alone cannot change watch behavior.
+version 17, 3 pixels/module. Updating the website alone cannot change watch
+behavior; a watch build that offers Compressed needs reader v1.3 or later.
 
 The watch's Data transfer first asks **Compressed** (default) or **Uncompressed**,
 then **Go**. E1 pages hold up to 548 file bytes; E2 pages (Compressed, when the file
 allows it) hold 870. About 100 surveys in the compact record format (~6.6 KB) take
 8 E2 or 13 E1 pages. The watch label shows `E1` or `E2` on each page; Compressed
-falls back to E1 for files with old-format records. The existing 1,603-byte sample
-is always E1 and needs three pages.
+falls back to E1 for files with old-format records. When `counter.txt` is
+absent or empty, the current watch app exports a built-in synthetic sample.
+Its 100 records take **8 E2 pages** or **12 E1 pages**. Both modes should
+recover 6,317 original bytes with CRC-32 `616d3105`. The saved filename
+starts with `SAMPLE_`.
 
 ## Researcher workflow
 
 1. Open Data transfer on the watch and this reader in Safari. Tap Start scanning
    and allow camera access. Scan with the webpage, not the iPhone Camera search link.
-2. Fit the whole QR and its white border inside the framing box and hold steady.
-   The reader scans a larger area around the box at camera resolution, then
-   falls back to the full frame. Advance the watch when the count increases.
+2. Line the framing box up with the edges of the QR, then move the phone slowly
+   toward the watch until the page is captured (user-observed on iPhone: capture is
+   reliable once the box is about 20% inside the code; starting that close can leave
+   the phone on a camera that scans poorly). The reader scans a larger area around
+   the box at camera resolution, then falls back to the full frame. Advance the watch when the count increases.
    Order does not matter.
 3. A green message below the camera confirms each captured page. Identical duplicates
    do not increase the count or flash the border again. If needed, choose **Scan a photo instead**; the page immediately reports whether
@@ -83,17 +102,20 @@ is always E1 and needs three pages.
    record formats produce warnings but all original bytes remain in the saved file.
 5. The file is named `<PID>_esm_data_<YYYYMMDD>.txt` from the last `PID:` line and
    today's date (`NOPID_…` if the watch has no PID). It holds a short header, the
-   exact watch file, and a readable CSV (format in `PROTOCOL.md`). Tap **Save file** and choose
-   **Save to Files**. Where file sharing is unavailable, the same button downloads.
+   exact watch file, and a readable CSV (format in `PROTOCOL.md`). Tap **Save file**, choose
+   **Drive** in the share options, and pick the study folder (Google Drive app
+   installed and signed in). **Save to Files** remains available. Where file
+   sharing is unavailable, the same button downloads.
    A non-cancellation sharing error makes the next tap use the download fallback.
    Downloads may go to iCloud Drive or On My iPhone according to device settings.
-6. Open the resulting `.txt` in Files and confirm it is accessible, then manually
-   upload it to the study Drive folder. The reader does not claim a save succeeded
+6. Confirm the file appears in the study Drive folder before clearing the watch.
+   v1.3 also passed a share title, which Drive saved as an extra
+   `Watch export.txt` containing only that text; v1.3.1 removes the title. The reader does not claim a save succeeded
    merely because the save options opened. There is no confirmation checkbox.
 7. Press and release the watch's side button to return from Data transfer to the
    main menu. It cancels pending transfer work; it does not delete survey data.
    Exiting during synchronous encoding may wait until that encoding call returns.
-   Setup → PID is built; Wake/Sleep and data clearing remain unfinished features.
+   Data is deleted only by the watch's Setup → Clear (two confirmations).
    Use **Start new export** on the phone before scanning another export.
 
 Keep the tab open until saving. Scans are held in memory only. Reload, tab eviction,
@@ -125,14 +147,19 @@ the exact watch file from a saved file.
 They do not simulate Fitbit filesystem APIs, device scheduling, or a real camera.
 The tests reference the parent watch source and are not included in the hosting zip.
 
-Before study use, test on the physical Versa 2 and each supported iPhone:
+On 2026-11-11, the user scanned one real survey in E2 and the 100-record
+sample in both E2 and E1 on a physical Versa 2 with the live v1.3 reader.
+The two sample exports had byte-identical originals and CSVs. The CSV
+contained 90 completed surveys and 10 synthetic abandonments.
 
-- Full sample scan and saved-file comparison, then a 150-record export.
+Remaining device checks before study use:
+
+- A 150-record export and timed full-file scans in both modes.
+- Automatic E1 fallback when Compressed is selected on a legacy file.
+- Saving and exporting real surveys with an untouched slider or abandonment.
 - Missing/duplicate/out-of-order pages and a page from another export.
 - Permission denied, camera pause/resume, backgrounding, and restarting an export.
 - Save to Files, cancel sharing, download fallback, reopen the file, and manual Drive upload.
-- Record full-file scan time. If dozens of pages are impractical, evaluate compression
-  as a separate watch change without sacrificing exact byte reconstruction.
 
 Desktop preview (not a phone-accessible HTTPS deployment):
 
@@ -143,7 +170,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory tools/phone-reader
 Open http://127.0.0.1:8765 on that computer. A local file double-click is not sufficient
 for browser modules/camera access. Use the published HTTPS page on the phone.
 
-## Reader v1.1 / watch navigation update
+## Reader v1.1 / watch navigation update (history; still current behavior)
 
 The watch hides the previous QR immediately on accepted page navigation and displays
 Generating / Please wait until the new image is ready. The side-button release is
